@@ -12,7 +12,7 @@ if (!$userId || $_SESSION['role'] !== 'mentor') {
     exit;
 }
 
-// Ambil data user untuk nama dan foto profil di navbar
+// Ambil data user untuk navbar
 $qUserNavbar = $conn->query("SELECT Nama_User, Foto_Profile FROM user WHERE User_ID = $userId");
 $dataUserNavbar = $qUserNavbar->fetch_assoc();
 $nama_user_navbar = $dataUserNavbar['Nama_User'] ?? 'Mentor';
@@ -24,33 +24,30 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $judul = trim($_POST['judul'] ?? '');
     $deskripsi = trim($_POST['deskripsi'] ?? '');
     $modul_id = intval($_POST['modul_id']);
-    $deadline = trim($_POST['batas'] ?? ''); // This will be YYYY-MM-DD from date input
+    $deadline = trim($_POST['batas'] ?? ''); // format: Y-m-d\TH:i
 
-    // Basic validation
     if (empty($judul) || empty($deskripsi) || empty($modul_id) || empty($deadline)) {
         $error = "Semua field wajib (Judul, Deskripsi, Modul, Batas Kumpul) harus diisi.";
-    } elseif (!DateTime::createFromFormat('Y-m-d', $deadline)) { // Validate date format
+    } elseif (!DateTime::createFromFormat('Y-m-d\TH:i', $deadline)) {
         $error = "Format tanggal deadline tidak valid.";
     } else {
-        $file_name_uploaded = null; // Default to null if no file or error
+        $file_name_uploaded = null;
 
-        // File upload handling (optional)
+        // File upload
         if (isset($_FILES["file"]) && $_FILES["file"]["error"] == UPLOAD_ERR_OK) {
-            $uploadDir = '../uploads/tugas_lampiran/'; // Dedicated folder for task attachments
+            $uploadDir = '../uploads/tugas_lampiran/';
             if (!is_dir($uploadDir)) {
-                mkdir($uploadDir, 0777, true); // Create directory if it doesn't exist
+                mkdir($uploadDir, 0777, true);
             }
 
             $fileExtension = pathinfo($_FILES["file"]["name"], PATHINFO_EXTENSION);
-            // Generate a unique file name
             $newFileName = uniqid('tugas_') . '_' . bin2hex(random_bytes(8)) . '.' . $fileExtension;
             $targetPath = $uploadDir . $newFileName;
 
-            // Basic file type and size validation (adjust as needed)
-            $allowedTypes = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'zip', 'rar', 'jpg', 'jpeg', 'png']; // Extended types
+            $allowedTypes = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'zip', 'rar', 'jpg', 'jpeg', 'png'];
             if (!in_array(strtolower($fileExtension), $allowedTypes)) {
-                $error = "Format file tidak diizinkan. Mohon upload PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, ZIP, RAR, JPG, JPEG, atau PNG.";
-            } elseif ($_FILES["file"]["size"] > 25 * 1024 * 1024) { // Max 25MB
+                $error = "Format file tidak diizinkan. Mohon upload PDF, DOC, PPT, ZIP, Gambar, dll.";
+            } elseif ($_FILES["file"]["size"] > 25 * 1024 * 1024) {
                 $error = "Ukuran file terlalu besar. Maksimal 25MB.";
             } elseif (!move_uploaded_file($_FILES["file"]["tmp_name"], $targetPath)) {
                 $error = "Gagal mengupload file. Silakan coba lagi.";
@@ -61,13 +58,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $error = "Terjadi kesalahan saat mengupload file. Error code: " . $_FILES["file"]["error"];
         }
 
-        if (empty($error)) { // Only proceed if no validation/upload error
-            // Prepare deadline date format for database (YYYY-MM-DD HH:MM:SS) - assuming time is 23:59:59 on deadline date
-            $deadline_with_time = $deadline . ' 23:59:59'; 
+        if (empty($error)) {
+            // Format untuk MySQL datetime: Y-m-d H:i:s
+            $deadlineObj = DateTime::createFromFormat('Y-m-d\TH:i', $deadline);
+            $deadline_mysql = $deadlineObj->format('Y-m-d H:i:s');
 
-            // Insert data into database using prepared statement
             $stmt = $conn->prepare("INSERT INTO Tugas(Judul_Tugas, Deskripsi_Tugas, File_Lampiran, Modul_ID, Batas_Kumpul) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssis", $judul, $deskripsi, $file_name_uploaded, $modul_id, $deadline_with_time);
+            $stmt->bind_param("sssis", $judul, $deskripsi, $file_name_uploaded, $modul_id, $deadline_mysql);
 
             if ($stmt->execute()) {
                 header("Location: tugas_list.php?status=success_add");
@@ -79,6 +76,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 

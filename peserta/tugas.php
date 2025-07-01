@@ -403,7 +403,7 @@ $foto_profil_navbar = !empty($dataUserNavbar['Foto_Profile']) ? '../uploads/' . 
                                 <td class='" . (strtotime($rowTugas['Batas_Kumpul']) < time() ? 'text-danger' : '') . "'>" . $formatted_deadline . "</td>
                                 <td>";
                                 if (!empty($rowTugas['File_Lampiran'])) {
-                                    echo "<a href='../uploads/" . rawurlencode($rowTugas['File_Lampiran']) . "' target='_blank' class='btn btn-sm btn-download'>
+                                    echo "<a href='../uploads/tugas_lampiran/" . rawurlencode($rowTugas['File_Lampiran']) . "' target='_blank' class='btn btn-sm btn-download'>
                                             <i class='fas fa-download me-1'></i> Download
                                         </a>";
                                 } else {
